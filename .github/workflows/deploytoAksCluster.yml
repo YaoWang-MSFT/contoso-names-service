@@ -1,0 +1,50 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: wyregistry02.azurecr.io
+        username: ${{ secrets.acr_wyregistry02_username }}
+        password: ${{ secrets.acr_wyregistry02_password }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/" -f  "Dockerfile" -t wyregistry02.azurecr.io/akswangyao1121:${{ github.sha }} --label dockerfile-path=Dockerfile
+        docker push wyregistry02.azurecr.io/akswangyao1121:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{ secrets.aks_akswangyao1121_kubeConfig }}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep contoso-names-service | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace contoso-names-service`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: contoso-names-service
+        container-registry-url: wyregistry02.azurecr.io
+        container-registry-username: ${{ secrets.acr_wyregistry02_username }}
+        container-registry-password: ${{ secrets.acr_wyregistry02_password }}
+        secret-name: akswangyao11dockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: contoso-names-service
+        manifests: |
+          manifests/deployment.yml
+          manifests/service.yml
+        images: |
+          wyregistry02.azurecr.io/akswangyao1121:${{ github.sha }}
+        imagepullsecrets: |
+          akswangyao11dockerauth

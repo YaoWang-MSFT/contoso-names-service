@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: "akswangyao1121-c983"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "akswangyao1121-c983"
+  template:
+    metadata:
+      labels:
+        app: "akswangyao1121-c983"
+    spec:
+      containers:
+        - name: "akswangyao1121-c983"
+          image: "wyregistry02.azurecr.io/akswangyao1121"
+          ports:
+          - containerPort: 80
